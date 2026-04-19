@@ -97,7 +97,11 @@ export class GuildPlayer {
     const song = this.queue.shift();
     if (!song) {
       this.currentSong = undefined;
-      await this._updateNowPlaying();
+      if (this.nowPlayingMessage) {
+        const embed = buildNowPlayingEmbed(undefined, false, false);
+        try { await this.nowPlayingMessage.edit({ embeds: [embed], components: [] }); } catch { /* ignore */ }
+        this.nowPlayingMessage = null;
+      }
       return;
     }
 
@@ -117,7 +121,7 @@ export class GuildPlayer {
 
       this.player.play(resource);
       this._isPaused = false;
-      await this._updateNowPlaying();
+      await this._sendNowPlayingToChannel();
     } catch (err) {
       logger.error({ err, song }, "Failed to create audio resource");
       this.currentSong = undefined;
@@ -135,6 +139,28 @@ export class GuildPlayer {
       await this.nowPlayingMessage.edit({ embeds: [embed], components });
     } catch {
       this.nowPlayingMessage = null;
+    }
+  }
+
+  private async _sendNowPlayingToChannel() {
+    if (!this.textChannel) return;
+
+    const embed = buildNowPlayingEmbed(this.currentSong, this._isPaused, this._loopSong);
+    const components = buildControlButtons(this._isPaused, this._loopSong, !this.currentSong);
+
+    if (this.nowPlayingMessage) {
+      try {
+        await this.nowPlayingMessage.edit({ embeds: [embed], components });
+        return;
+      } catch {
+        this.nowPlayingMessage = null;
+      }
+    }
+
+    try {
+      this.nowPlayingMessage = await this.textChannel.send({ embeds: [embed], components });
+    } catch (err) {
+      logger.error({ err }, "Failed to send now-playing message");
     }
   }
 

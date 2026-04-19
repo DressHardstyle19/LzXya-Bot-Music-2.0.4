@@ -58,27 +58,22 @@ export async function handleMusic(message: Message, args: string[]) {
       });
     }
 
-    const queueSize = player.getQueue().length;
-    const isPlaying = player.isPlaying() && player.getCurrentSong()?.url === song.url;
+    const queuePos = player.getQueue().length;
 
-    if (isPlaying) {
-      await searching.delete().catch(() => {});
-      player.nowPlayingMessage = await message.channel.send({
-        embeds: [buildNowPlayingEmbed(song, false, player.isLooping())],
-        components: buildControlButtons(false, player.isLooping(), false),
-      });
-    } else {
+    if (queuePos > 0) {
       const embed = new EmbedBuilder()
         .setColor(0x57f287)
         .setTitle("✅ Añadido a la cola")
         .setDescription(`**[${song.title}](${song.url})**`)
         .addFields(
-          { name: "⏱ Duración", value: song.duration, inline: true },
-          { name: "📋 Posición en cola", value: `#${queueSize}`, inline: true },
+          { name: "⏱ Duración", value: song.duration || "Desconocida", inline: true },
+          { name: "📋 Posición", value: `#${queuePos}`, inline: true },
           { name: "👤 Solicitada por", value: song.requestedBy, inline: true }
         );
       if (song.thumbnail) embed.setThumbnail(song.thumbnail);
       await searching.edit({ embeds: [embed] });
+    } else {
+      await searching.delete().catch(() => {});
     }
   } catch (err) {
     logger.error({ err }, "Error in !music command");
@@ -176,6 +171,10 @@ export async function handleNowPlaying(message: Message) {
 
   if (message.channel instanceof TextChannel) {
     player.setTextChannel(message.channel);
+  }
+
+  if (player.nowPlayingMessage) {
+    try { await player.nowPlayingMessage.delete(); } catch { /* ignore */ }
   }
 
   player.nowPlayingMessage = await message.reply({
