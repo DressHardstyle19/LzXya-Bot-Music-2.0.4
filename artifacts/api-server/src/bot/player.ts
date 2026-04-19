@@ -12,7 +12,7 @@ import {
 } from "@discordjs/voice";
 import { VoiceChannel, GuildMember, Message, TextChannel } from "discord.js";
 import { MusicQueue, Song } from "./queue.js";
-import playdl from "play-dl";
+import { ytdlpStream } from "./ytdlp.js";
 import { logger } from "../lib/logger.js";
 import { buildNowPlayingEmbed, buildControlButtons } from "./nowplaying.js";
 
@@ -87,7 +87,7 @@ export class GuildPlayer {
     this.queue.add(song);
 
     if (this.player.state.status === AudioPlayerStatus.Idle && !this._isPaused) {
-      this._playNext();
+      await this._playNext();
     }
 
     return true;
@@ -104,45 +104,42 @@ export class GuildPlayer {
     this.currentSong = song;
 
     try {
-      const stream = await playdl.stream(song.url, { quality: 2 });
-      const resource = createAudioResource(stream.stream, {
-        inputType: stream.type as StreamType,
+      const proc = ytdlpStream(song.url);
+
+      proc.stderr?.on("data", (d: Buffer) => {
+        const msg = d.toString().trim();
+        if (msg) logger.warn({ msg }, "yt-dlp stderr");
       });
+
+      const resource = createAudioResource(proc.stdout, {
+        inputType: StreamType.Arbitrary,
+      });
+
       this.player.play(resource);
       this._isPaused = false;
       await this._updateNowPlaying();
     } catch (err) {
       logger.error({ err, song }, "Failed to create audio resource");
       this.currentSong = undefined;
-      this._playNext();
+      await this._playNext();
     }
   }
 
   private async _updateNowPlaying() {
-    if (!this.textChannel) return;
+    if (!this.nowPlayingMessage) return;
 
-    const embed = buildNowPlayingEmbed(
-      this.currentSong,
-      this._isPaused,
-      this._loopSong
-    );
+    const embed = buildNowPlayingEmbed(this.currentSong, this._isPaused, this._loopSong);
     const components = buildControlButtons(this._isPaused, this._loopSong, !this.currentSong);
 
     try {
-      if (this.nowPlayingMessage) {
-        await this.nowPlayingMessage.edit({ embeds: [embed], components });
-      }
+      await this.nowPlayingMessage.edit({ embeds: [embed], components });
     } catch {
       this.nowPlayingMessage = null;
     }
   }
 
   async sendNowPlaying(replyTarget: Message): Promise<Message> {
-    const embed = buildNowPlayingEmbed(
-      this.currentSong,
-      this._isPaused,
-      this._loopSong
-    );
+    const embed = buildNowPlayingEmbed(this.currentSong, this._isPaused, this._loopSong);
     const components = buildControlButtons(this._isPaused, this._loopSong, !this.currentSong);
 
     if (this.nowPlayingMessage) {
@@ -156,10 +153,6 @@ export class GuildPlayer {
 
     this.nowPlayingMessage = await replyTarget.reply({ embeds: [embed], components });
     return this.nowPlayingMessage;
-  }
-
-  async refreshButtons() {
-    await this._updateNowPlaying();
   }
 
   skip(): boolean {
@@ -215,14 +208,10 @@ export class GuildPlayer {
     this._loopSong = false;
     this.player.stop(true);
     const connection = this.getConnection();
-    if (connection) {
-      connection.destroy();
-    }
+    if (connection) connection.destroy();
     if (this.nowPlayingMessage) {
       const embed = buildNowPlayingEmbed(undefined, false, false);
-      this.nowPlayingMessage
-        .edit({ embeds: [embed], components: [] })
-        .catch(() => {});
+      this.nowPlayingMessage.edit({ embeds: [embed], components: [] }).catch(() => {});
       this.nowPlayingMessage = null;
     }
   }

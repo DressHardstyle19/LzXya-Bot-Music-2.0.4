@@ -33,7 +33,7 @@ async function buildAll() {
       "@discordjs/opus",
       "discord.js",
       "prism-media",
-      "play-dl",
+      "@distube/ytdl-core",
       "ffmpeg-static",
       "opusscript",
       "node-opus",
