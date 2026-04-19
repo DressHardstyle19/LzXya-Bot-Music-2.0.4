@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Partials } from "discord.js";
+import { Client, GatewayIntentBits, Partials, TextChannel } from "discord.js";
 import { logger } from "../lib/logger.js";
 import {
   handleMusic,
@@ -10,6 +10,8 @@ import {
   handleNowPlaying,
   handleHelp,
 } from "./commands.js";
+import { getPlayer } from "./player.js";
+import { BTN, buildNowPlayingEmbed, buildControlButtons } from "./nowplaying.js";
 
 const PREFIX = "!";
 
@@ -31,7 +33,7 @@ export function startBot() {
     partials: [Partials.Channel],
   });
 
-  client.once("ready", () => {
+  client.once("clientReady", () => {
     logger.info({ tag: client.user?.tag }, "Discord bot ready");
     client.user?.setActivity("!help | !music <canción>", { type: 2 });
   });
@@ -81,6 +83,60 @@ export function startBot() {
       }
     } catch (err) {
       logger.error({ err, command }, "Unhandled command error");
+    }
+  });
+
+  client.on("interactionCreate", async (interaction) => {
+    if (!interaction.isButton()) return;
+    if (!interaction.guildId) return;
+
+    const player = getPlayer(interaction.guildId);
+
+    if (interaction.channel instanceof TextChannel) {
+      player.setTextChannel(interaction.channel);
+    }
+
+    try {
+      await interaction.deferUpdate();
+
+      switch (interaction.customId) {
+        case BTN.PAUSE: {
+          if (player.isPausedState()) {
+            player.resume();
+          } else {
+            player.pause();
+          }
+          break;
+        }
+
+        case BTN.SKIP: {
+          player.skip();
+          break;
+        }
+
+        case BTN.REWIND: {
+          await player.rewind();
+          break;
+        }
+
+        case BTN.LOOP: {
+          player.toggleLoop();
+          break;
+        }
+
+        case BTN.STOP: {
+          player.stop();
+          break;
+        }
+      }
+
+      const song = player.getCurrentSong();
+      const embed = buildNowPlayingEmbed(song, player.isPausedState(), player.isLooping());
+      const components = buildControlButtons(player.isPausedState(), player.isLooping(), !song);
+
+      await interaction.editReply({ embeds: [embed], components });
+    } catch (err) {
+      logger.error({ err, buttonId: interaction.customId }, "Button interaction error");
     }
   });
 

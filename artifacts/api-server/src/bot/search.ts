@@ -13,29 +13,41 @@ export async function searchYouTube(
   requestedBy: string
 ): Promise<Song | null> {
   try {
-    let videoInfo: Awaited<ReturnType<typeof playdl.video_info>> | null = null;
+    let videoUrl: string;
+    let title: string;
+    let durationSec: number;
+    let thumbnail: string | undefined;
 
     if (playdl.yt_validate(query) === "video") {
-      videoInfo = await playdl.video_info(query);
+      videoUrl = query;
+      const info = await playdl.video_basic_info(videoUrl);
+      title = info.video_details.title ?? "Unknown";
+      durationSec = info.video_details.durationInSec;
+      thumbnail = info.video_details.thumbnails?.[0]?.url;
     } else {
-      const results = await playdl.search(query, { source: { youtube: "video" }, limit: 1 });
+      const results = await playdl.search(query, {
+        source: { youtube: "video" },
+        limit: 1,
+      });
+
       if (!results.length) {
         logger.warn({ query }, "No video found for query");
         return null;
       }
-      videoInfo = await playdl.video_info(results[0].url);
+
+      const top = results[0];
+      videoUrl = top.url;
+      title = top.title ?? "Unknown";
+      durationSec = top.durationInSec ?? 0;
+      thumbnail = top.thumbnails?.[0]?.url;
     }
 
-    if (!videoInfo) return null;
-
-    const details = videoInfo.video_details;
-
     return {
-      title: details.title ?? "Unknown",
-      url: details.url,
-      duration: formatDuration(details.durationInSec),
+      title,
+      url: videoUrl,
+      duration: formatDuration(durationSec),
       requestedBy,
-      thumbnail: details.thumbnails?.[0]?.url,
+      thumbnail,
     };
   } catch (err) {
     logger.error({ err, query }, "YouTube search failed");

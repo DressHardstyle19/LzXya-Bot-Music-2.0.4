@@ -13,6 +13,10 @@ export class MusicQueue {
     this.songs.push(song);
   }
 
+  prepend(song: Song) {
+    this.songs.unshift(song);
+  }
+
   shift(): Song | undefined {
     return this.songs.shift();
   }
