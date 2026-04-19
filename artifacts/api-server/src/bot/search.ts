@@ -1,4 +1,4 @@
-import ytdl from "ytdl-core";
+import playdl from "play-dl";
 import { Song } from "./queue.js";
 import { logger } from "../lib/logger.js";
 
@@ -13,35 +13,27 @@ export async function searchYouTube(
   requestedBy: string
 ): Promise<Song | null> {
   try {
-    let videoUrl: string;
+    let videoInfo: Awaited<ReturnType<typeof playdl.video_info>> | null = null;
 
-    if (ytdl.validateURL(query)) {
-      videoUrl = query;
+    if (playdl.yt_validate(query) === "video") {
+      videoInfo = await playdl.video_info(query);
     } else {
-      const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
-      const response = await fetch(searchUrl, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-        },
-      });
-      const html = await response.text();
-
-      const match = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
-      if (!match) {
+      const results = await playdl.search(query, { source: { youtube: "video" }, limit: 1 });
+      if (!results.length) {
         logger.warn({ query }, "No video found for query");
         return null;
       }
-      videoUrl = `https://www.youtube.com/watch?v=${match[1]}`;
+      videoInfo = await playdl.video_info(results[0].url);
     }
 
-    const info = await ytdl.getInfo(videoUrl);
-    const details = info.videoDetails;
+    if (!videoInfo) return null;
+
+    const details = videoInfo.video_details;
 
     return {
-      title: details.title,
-      url: details.video_url,
-      duration: formatDuration(parseInt(details.lengthSeconds, 10)),
+      title: details.title ?? "Unknown",
+      url: details.url,
+      duration: formatDuration(details.durationInSec),
       requestedBy,
       thumbnail: details.thumbnails?.[0]?.url,
     };

@@ -8,10 +8,11 @@ import {
   VoiceConnectionStatus,
   joinVoiceChannel,
   getVoiceConnection,
+  StreamType,
 } from "@discordjs/voice";
 import { VoiceChannel, GuildMember } from "discord.js";
 import { MusicQueue, Song } from "./queue.js";
-import ytdl from "ytdl-core";
+import playdl from "play-dl";
 import { logger } from "../lib/logger.js";
 
 export class GuildPlayer {
@@ -81,7 +82,7 @@ export class GuildPlayer {
     return true;
   }
 
-  private _playNext() {
+  private async _playNext() {
     const song = this.queue.shift();
     if (!song) {
       this.currentSong = undefined;
@@ -91,17 +92,15 @@ export class GuildPlayer {
     this.currentSong = song;
 
     try {
-      const stream = ytdl(song.url, {
-        filter: "audioonly",
-        quality: "highestaudio",
-        highWaterMark: 1 << 25,
+      const stream = await playdl.stream(song.url, { quality: 2 });
+      const resource = createAudioResource(stream.stream, {
+        inputType: stream.type as StreamType,
       });
-
-      const resource = createAudioResource(stream);
       this.player.play(resource);
       this.isPaused = false;
     } catch (err) {
       logger.error({ err, song }, "Failed to create audio resource");
+      this.currentSong = undefined;
       this._playNext();
     }
   }
