@@ -3,8 +3,11 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { logger } from "../lib/logger.js";
 
+import { existsSync } from "fs";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const YTDLP = path.resolve(__dirname, "../../../bin/yt-dlp");
+const localBin = path.resolve(__dirname, "../../../bin/yt-dlp");
+export const YTDLP = existsSync(localBin) ? localBin : "yt-dlp";
 
 export interface VideoInfo {
   id: string;
