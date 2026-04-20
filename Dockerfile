@@ -1,14 +1,9 @@
 FROM node:20-slim
 
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    curl \
-    ca-certificates \
-    --no-install-recommends && \
+RUN apt-get update && \
+    apt-get install -y ffmpeg curl ca-certificates python3 python3-pip --no-install-recommends && \
+    pip3 install --break-system-packages yt-dlp && \
     rm -rf /var/lib/apt/lists/*
-
-RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o /usr/local/bin/yt-dlp && \
-    chmod +x /usr/local/bin/yt-dlp
 
 RUN npm install -g pnpm@10
 
