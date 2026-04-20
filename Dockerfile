@@ -9,12 +9,9 @@ RUN npm install -g pnpm@10
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY artifacts/api-server/package.json ./artifacts/api-server/
+COPY . .
 
 RUN pnpm install --no-frozen-lockfile --config.minimumReleaseAge=0
-
-COPY . .
 
 RUN pnpm --filter @workspace/api-server run build
 
