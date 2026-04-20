@@ -1,0 +1,9 @@
+node_modules
+**/node_modules
+**/.git
+**/dist
+bin/yt-dlp
+*.log
+.replit
+replit.md
+attached_assets
