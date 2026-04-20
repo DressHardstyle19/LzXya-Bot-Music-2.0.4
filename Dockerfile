@@ -15,8 +15,9 @@ WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY artifacts/api-server/package.json ./artifacts/api-server/
+COPY artifacts/mockup-sandbox/package.json ./artifacts/mockup-sandbox/ 2>/dev/null || true
 
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --no-frozen-lockfile --config.minimumReleaseAge=0
 
 COPY . .
 
