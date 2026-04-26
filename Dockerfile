@@ -1,7 +1,7 @@
 FROM node:20-slim
 
 RUN apt-get update && \
-    apt-get install -y ffmpeg curl ca-certificates python3 python3-pip --no-install-recommends && \
+    apt-get install -y ffmpeg ca-certificates python3 python3-pip --no-install-recommends && \
     pip3 install --break-system-packages yt-dlp && \
     rm -rf /var/lib/apt/lists/*
 
