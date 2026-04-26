@@ -1,13 +1,17 @@
-import { spawn, spawnSync } from "child_process";
+import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 import { logger } from "../lib/logger.js";
-
 import { existsSync } from "fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const localBin = path.resolve(__dirname, "../../../bin/yt-dlp");
 export const YTDLP = existsSync(localBin) ? localBin : "yt-dlp";
+
+const BYPASS_ARGS = [
+  "--extractor-args", "youtube:player_client=ios",
+  "--no-check-certificates",
+];
 
 export interface VideoInfo {
   id: string;
@@ -26,6 +30,7 @@ export async function ytdlpSearch(query: string): Promise<VideoInfo | null> {
       "-J",
       "--quiet",
       "--no-warnings",
+      ...BYPASS_ARGS,
     ];
 
     const proc = spawn(YTDLP, args);
@@ -62,7 +67,7 @@ export async function ytdlpSearch(query: string): Promise<VideoInfo | null> {
 
 export async function ytdlpGetInfo(url: string): Promise<VideoInfo | null> {
   return new Promise((resolve) => {
-    const args = [url, "--no-playlist", "-J", "--quiet", "--no-warnings"];
+    const args = [url, "--no-playlist", "-J", "--quiet", "--no-warnings", ...BYPASS_ARGS];
     const proc = spawn(YTDLP, args);
     let stdout = "";
 
@@ -94,5 +99,6 @@ export function ytdlpStream(url: string) {
     "--quiet",
     "--no-warnings",
     "--no-playlist",
+    ...BYPASS_ARGS,
   ]);
 }
