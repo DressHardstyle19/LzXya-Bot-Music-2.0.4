@@ -1,7 +1,7 @@
-FROM node:20-slim
+FROM node:20-bookworm
 
 RUN apt-get update && \
-    apt-get install -y ffmpeg ca-certificates python3 python3-pip --no-install-recommends && \
+    apt-get install -y ffmpeg python3 python3-pip --no-install-recommends && \
     pip3 install --break-system-packages yt-dlp && \
     rm -rf /var/lib/apt/lists/*
 
